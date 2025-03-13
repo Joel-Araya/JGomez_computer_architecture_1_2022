@@ -2,6 +2,7 @@ import customtkinter as ctk
 import tkinter as tk
 from PIL import Image, ImageTk
 import subprocess
+import struct
 
 # Convertir la imagen a escala de grises y redimensionarla
 imagen_original = Image.open("input.jpg").convert("L").resize((390, 390))
@@ -49,6 +50,18 @@ def seleccionar(event):
             rectangulo_id = canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=3)
             break
 
+# Guardar la imagen seleccionada como "input.img"
+def guardar_como_binario():
+    if seleccionada:
+        ancho, largo = seleccionada.size  # Obtener dimensiones
+        pixeles = list(seleccionada.getdata())  # Obtener valores de píxeles
+
+        with open("input.img", "wb") as f:
+            f.write(struct.pack("II", largo, ancho))  # Escribir largo y ancho
+            f.write(bytes(pixeles))  # Escribir valores de píxeles
+
+        print("Imagen guardada como input.img")
+
 # Ejecutar código ensamblador y mostrar imagen de salida
 def execute_assembly():
     subprocess.run(["arm-linux-gnueabi-as", "test.s", "-o", "test.o"])
@@ -61,7 +74,7 @@ def execute_assembly():
 # Mostrar la imagen procesada
 def mostrar_output():
     try:
-        output_img = Image.open("output.jpg")  # Escalar la imagen de salida
+        output_img = Image.open("output.jpg").resize((390, 390))  # Escalar la imagen de salida
         output_tk = ImageTk.PhotoImage(output_img)
         output_canvas.create_image(0, 0, anchor="nw", image=output_tk)
         output_canvas.image = output_tk  # Mantener referencia
@@ -70,10 +83,8 @@ def mostrar_output():
 
 # Guardar la parte seleccionada y ejecutar ensamblador
 def guardar_y_procesar():
-    if seleccionada:
-        seleccionada.save("parte.jpg")  # Guarda la parte seleccionada
-        print("Parte guardada como parte.jpg")
-        execute_assembly()  # Ejecuta el código en ensamblador
+    guardar_como_binario()
+    execute_assembly()  # Ejecuta el código en ensamblador
 
 # Enlazar clic en la imagen
 canvas.bind("<Button-1>", seleccionar)
