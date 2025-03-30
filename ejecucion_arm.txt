@@ -1,0 +1,73 @@
+##Terminal que hostea el qemu:
+
+qemu-arm -singlestep -g 1234 test
+
+
+##Otra terminal:
+
+- Para compilar y ejecutar
+arm-none-eabi-as test.s -g -o test.o && arm-none-eabi-ld test.o -o test && ./test
+
+- Para debugear:
+arm-none-eabi-gdb
+
+
+#(gdb) 
+
+###-Breakpoint en cada parte
+
+file test
+target remote localhost:1234
+b _read_char
+b _check_word
+b _compare_words
+b _next_word
+b _add_count
+b _save_word
+b _copy_word
+b _save_data
+b _end
+b _complete_temp_word
+b _complete_temp_word_loop
+
+
+###- Breakpoint en bilinear eq y end
+
+file test
+target remote localhost:1234
+b _bilinear_interpolation_equation
+b _end
+c
+x/16xb &temp_pixels
+
+x/100xb &data_buffer
+x/100xb &output_buffer
+i r r3 r4
+
+c 359
+
+
+###- Breakpoint en end
+
+file test
+target remote localhost:1234
+b _end
+c
+x/16xb &temp_pixels
+x/100xb &data_buffer
+x/100xb &output_buffer
+i r r3 r4
+
+c 359
+
+
+##Para observar los valores de buffers y registros
+
+x/s &buffer
+
+x/s &data_buffer
+x/s &output_buffer
+x/w &count_buffer
+x/s &temp_word
+i r r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12
+x/50s &word_buffer
