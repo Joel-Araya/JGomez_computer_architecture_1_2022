@@ -104,38 +104,31 @@ _bilinear_interpolation:
 	//Posicion de esquina (0,0) y (0,3)
 	MOV R0, #0	//Posicion de (0,0)
 	MOV R1, #12 //Posicion de (3,0)
-	
-	//LDRB R5, [R2, R0]      // Cargar el byte en la posición (0,0) de temp_pixel en R5
-	//LDRB R6, [R2, R1]      // Cargar el byte en la posición (0,3) de temp_pixel en R6
-
 	bl _get_lateral_values	//Guarda en R5 y R6 los valores de posición en el array temp_pixel, segun R0 y R1
 
 
 	//Calculamos primero los valores verticales (0,1), (0,2), (3,1), (3,2)
 
 	//Calculamos las pocisiones de (0,1)
-	MOV R8, #0
-	MOV R9, #1
-	
-	
+	MOV R3, #4
 	bl _bilinear_interpolation_equation
 
 	//Calculamos las pocisiones de (0,2)
-	MOV R8, #0
-	MOV R9, #2
-
+	MOV R3, #8
 	bl _bilinear_interpolation_equation
 
-	//Calculamos las pocisiones de (3,1)
-	MOV R8, #3
-	MOV R9, #1
+	//Posicion de esquina (0,0) y (0,3)
+	MOV R0, #3	//Posicion de (0,0)
+	MOV R1, #15 //Posicion de (3,0)
+	bl _get_lateral_values	//Guarda en R5 y R6 los valores de posición en el array temp_pixel, segun R0 y R1
 
+
+	//Calculamos las pocisiones de (3,1)
+	MOV R3, #7
 	bl _bilinear_interpolation_equation
 
 	//Calculamos las pocisiones de (3,2)
-	MOV R8, #3
-	MOV R9, #2
-
+	MOV R3, #11
 	bl _bilinear_interpolation_equation
 
 
@@ -143,63 +136,30 @@ _bilinear_interpolation_x_values:
 	//Posicion de esquina (0,0) y (3,0)
 	MOV R0, #0	//Posicion de (0,0)
 	MOV R1, #3  //Posicion de (3,0)
+
+	MOV R3, #1
+
+_loop:
 	bl _get_lateral_values	//Guarda en R5 y R6 los valores de posición en el array temp_pixel, segun R0 y R1
 
-	//Calculamos las pocisiones de (1,0)
-	MOV R8, #1
-	MOV R9, #0
+	//Calculamos las pocision inicial (primera ejecución es R3 es 1, pos (1,0))
 	bl _bilinear_interpolation_equation
 
-	//Calculamos las pocisiones de (2,0)
-	MOV R8, #2
-	MOV R9, #0
+	//Calculamos las segunda posición (segunda ejecución es R3 es 2, pos (2,0))
+	ADD R3, R3, #1
 	bl _bilinear_interpolation_equation
+
+
+	CMP R3, #14  // Ultima posición que falta es la 14
+    BEQ _end  
 
 	//Actualizamos laterales con +4 en R0 y R1
 	ADD R0, R0, #4
 	ADD R1, R1, #4
-	bl _get_lateral_values	//Guarda en R5 y R6 los valores de posición en el array temp_pixel, segun R0 y R1
+	ADD R3, R3, #3	//Incrementamos R3 para la siguiente iteración
 
+	B _loop
 
-	//Calculamos las pocisiones de (1,1)
-	MOV R8, #1
-	MOV R9, #1
-	bl _bilinear_interpolation_equation
-
-	//Calculamos las pocisiones de (2,1)
-	MOV R8, #2
-	MOV R9, #1
-	bl _bilinear_interpolation_equation
-
-	//Actualizamos laterales con +4 en R0 y R1
-	ADD R0, R0, #4
-	ADD R1, R1, #4
-	bl _get_lateral_values	//Guarda en R5 y R6 los valores de posición en el array temp_pixel, segun R0 y R1
-
-	//Calculamos las pocisiones de (1,2)
-	MOV R8, #1
-	MOV R9, #2
-	bl _bilinear_interpolation_equation
-
-	//Calculamos las pocisiones de (2,2)
-	MOV R8, #2
-	MOV R9, #2
-	bl _bilinear_interpolation_equation
-
-	// Actualizamos laterales con +4 en R0 y R1
-	MOV R0, #1	//Posicion de (1,0)
-	MOV R1, #2  //Posicion de (2,0)
-	bl _get_lateral_values	//Guarda en R5 y R6 los valores de posición en el array temp_pixel, segun R0 y R1
-
-	//Calculamos las pocisiones de (1,3)
-	MOV R8, #1
-	MOV R9, #3
-	bl _bilinear_interpolation_equation
-
-	//Calculamos las pocisiones de (2,3)
-	MOV R8, #2
-	MOV R9, #3
-	bl _bilinear_interpolation_equation
 
 
 
@@ -216,13 +176,9 @@ _get_lateral_values:
 	MOV PC, LR
 
 _bilinear_interpolation_equation:
-	// Calculamos la pos del pixel en temp_pixel
-	MOV R4, #4
-	MUL R3, R9, R4
-	ADD R3, R3, R8
+	//PixelX = (x2-x)/(x2-x1)*R5 + (x-x1)/(x2-x1)*R6
+	//PixelY = (y2-y)/(y2-y1)*R5 + (y-y1)/(y2-y1)*R6		//Es la misma para ambos casos, solo cambia la posición de los bytes
 
-
-	//Pixel = (y2-y)/(y2-y1)*R5 + (y-y1)/(y2-y1)*R6
 	//R7 = (R1-R3)/(R1-R0)*R5 + (R3-R0)/(R1-R0)*R6
 	//Factorizando R7 = [(R1-R3)*R5 + (R3-R0)*R6]/(R1-R0)
 	SUB R10, R1, R3
