@@ -4,11 +4,10 @@
 .balign 1
 input_filename: .asciz "input.img"
 output_filename: .asciz "output.img"
-data_buffer: .space 500000  // Reservar 500KB bytes para el buffer
-output_buffer: .space 2000000  // Reservar 2MB bytes para el buffer de salida
-temp_pixels: .space 16      // Buffer temporal para palabras, matriz de 4x4
-largo: .space 2	//Largo de la imagen
-ancho: .space 2	//Ancho de la imagen
+data_buffer: .space 524288  // Reservar 500KB bytes para el buffer
+output_buffer: .space 8388608  // Reservar 8MB bytes para el buffer de salida
+largo: .space 4	//Largo de la imagen
+ancho: .space 4	//Ancho de la imagen
 
 .text
 .global _start
@@ -37,178 +36,235 @@ _start:
 
     LDR R0, =data_buffer    // Cargar la dirección base del buffer en R0
     LDR R1, =output_buffer    // Cargar la dirección base del buffer temporal en R1
-    LDR R2, =temp_pixels   // Cargar la dirección base del buffer temporal en R2
 
-    LDRH R3, [R0]       // Cargar los 2 primeros bytes del archivo en R3, largo
-    LDRH R4, [R0, #2]   // Cargar los 2 siguientes bytes del archivo en R4, ancho
+    LDRH R2, [R0]       // Cargar los 2 primeros bytes del archivo en R3, largo
+    LDRH R3, [R0, #2]   // Cargar los 2 siguientes bytes del archivo en R4, ancho
+
     ADD R0, R0, #4      // Incrementar el puntero del buffer en 4 bytes, a partir de aquí se leerán los datos
 
 	//Guardar largo y ancho en variables globales
-	LDR R8, =largo
-	STRH R3, [R8]
-	LDR R9, =ancho
-	STRH R4, [R9]
+	LDR R4, =largo
+	STR R2, [R4]	//R2 es el largo
+	LDR R5, =ancho
+	STR R3, [R5]	//R3 es el ancho
 
-    //Hasta el momento solo se estan usando los registros R0, R1, R2, R3
+	//Calcular dimensiones de la nueva imagen, nueva dimension = original*3-2
+	MOV R6, #3		//Constante 3 para multiplicar
+	MUL R4, R2, R6  
+	Mul R5, R3, R6  
+	SUB R4, R4, #2	//R4 es el nuevo largo
+	SUB R5, R5, #2  //R5 es el nuevo ancho
+
+
+    //Hasta el momento solo se estan usando los registros R0 al R6
     //R0 es el puntero al buffer de datos, quitando los 4 bytes de largo y ancho
 
-    MOV R8, #0              // Inicializar el índice de R8 a 0, pixel x del temp_pixel
-    MOV R9, #0              // Inicializar el índice de R9 a 0, pixel y del temp_pixel
+	MOV R7, #0              // 
+    MOV R8, #0              // 
+    MOV R9, #0              // 
+	MOV R10, #0             //
 
-    MOV R11, #0             // Contador de X, para el pixel de la imagen completa
-    MOV R12, #0             // Contador de Y, para el pixel de la imagen completa
+    MOV R11, #0             // Contador de X, para el pixel de la imagen original
+    MOV R12, #0             // Contador de Y, para el pixel de la imagen original
+
+_reset_x:
+	MOV R11, #0 //Contador de iteraciones en columna, pixel x
 
 _read_bytes:
+	
 
-    LDR R0, =data_buffer    // Cargar de nuevo la dirección base del buffer en R0
-	ADD R0, R0, #4
-    LDR R1, =output_buffer    // Cargar de nuevo la dirección base del buffer temporal en R1
-	LDR R10, =largo
-	LDRH R3, [R10]
-	LDR R5, =ancho
-	LDRH R4, [R5]
-	DSB            // Asegurar que la escritura se complete
+	//En R7 guardo la posición de la imagen original en el buffer
+	MUL R7, R12, R2       // Multiplicar el contador de Y (R12) por el largo (R2)
+	ADD R7, R7, R11       // Sumar el contador de X, la posición en la imagen original
+	ADD R7, R7, R0		  // Sumar la dirección base del buffer
 
-    //Posicion del pixel de la imagen original, cuando llega a largo-1, ancho-1, es la ultima posicion
-    //Agarro los pixeles (x,y), (x+1,y), (x,y+1), (x+1,y+1)
+	// En R8 guardo la posición del pixel en la nueva imagen
+	//Primero calulamos la X y Y de la nueva imagen, solo *3
 
-    MUL R10, R12, R2       // Multiplicar el contador de Y por el largo
-    ADD R10, R10, R11       // Sumar el contador de X
+	MUL R9, R11, R6		//R9 es la posición en X de la imagen nueva
+	MUL R10, R12, R6		//R10 es la posición en Y de la imagen nueva
 
-    //Guardar esquinas de la imagen original en temp_pixel
-    LDRB R5, [R0, R10]      // Cargar el byte en la posición (R0 + R10) en R5
-    STRB R5, [R2]           // Guardar el byte en la posición (0,0) de temp_pixel
-	DSB            // Asegurar que la escritura se complete
+	//Con R9, R10 y el nuevo largo calculo la dirección del pixel en la nueva imagen
+	MUL R8, R10, R4		//Y_new*Largo_nuevo
+	ADD R8, R8, R9		// + X_new
+	ADD R8, R1, R8 //Sumo la dirección de output_buffer, R8 aquí es la dirección del pixel en la nueva imagen
 
-    ADD R10, R10, #1
-    LDRB R5, [R0, R10]      // Cargar el byte en la posición (R0 + R10 + 1) en R5
-    STRB R5, [R2, #3]       // Guardar el byte en la posición (0,3) de temp_pixel
-	DSB            // Asegurar que la escritura se complete
+	//Cargo en R9 el pixel de la imagen original
+	LDRB R9, [R7]      // Cargar el byte en la posición (R7) en R9
 
-    ADD R10, R10, R3
-    LDRB R5, [R0, R10]      // Cargar el byte en la posición (R0 + R10) en R5
-    STRB R5, [R2, #12]      // Guardar el byte en la posición (3,0) de temp_pixel
-	DSB            // Asegurar que la escritura se complete
+	//Guardar el pixel de la imagen original en output_buffer
+	STRB R9, [R8]           // Guardar el byte en la posición (R8) de la nueva imagen
 
-    ADD R10, R10, #1
-    LDRB R5, [R0, R10]      // Cargar el byte en la posición (R0 + R10) en R5
-    STRB R5, [R2, #15]      // Guardar el byte en la posición (3,3) de temp_pixel
-	DSB            // Asegurar que la escritura se complete
+	//Incrementar el contador de X
+	ADD R11, R11, #1
 
+	//Comparo si X (R11) es igual al largo de la imagen original
+	CMP R11, R3
+	BLT _read_bytes
 
+	//Incrementar el contador de Y
+	ADD R12, R12, #1
+
+	//Comparo si Y (R12) es igual al ancho de la imagen original
+	CMP R12, R2
+	BLT _reset_x
+
+	B _bilinear_interpolation
 
 
 _bilinear_interpolation:
+	LDR R0, =output_buffer	//Cargar la dirección base del buffer en R0
+	MOV R1, R4				//R1 es el nuevo largo
+	MOV R2, R5				//R2 es el nuevo ancho
+
+	MOV R4, #0		//R4 es el contador de Y, para el primer pixel
+	MOV R5, #3		//R5 es el contador de Y, para el segundo pixel
+
+_vertical_x_reset:
+	MOV R3, #0		//R3 es el contador de X
 
 
-	//Posicion de esquina (0,0) y (0,3)
-	MOV R0, #0	//Posicion de (0,0)
-	MOV R1, #12 //Posicion de (3,0)
-	bl _get_lateral_values	//Guarda en R5 y R6 los valores de posición en el array temp_pixel, segun R0 y R1
+_vertical_interpolation:
+	//R6, R7, R8, R9, R10, R11, R12 para usar
+
+	//En R6 Posicion P1 y en R7 Posicion P2
+	MUL R6, R4, R1		//R6 es la posición en X de la imagen nueva
+	MUL R7, R5, R1		//R7 es la posición en Y de la imagen nueva
+	ADD R6, R6, R3		// + X_new
+	ADD R7, R7, R3		// + X_new
+	ADD R6, R6, R0		//Sumo la dirección de output_buffer, R6 aquí es la dirección del pixel en la nueva imagen
+	ADD R7, R7, R0		//Sumo la dirección de output_buffer, R7 aquí es la dirección del pixel en la nueva imagen
+
+	ADD R8, R6, R1		//R8 es la posición de PI_1 (Pixel intermedio 1)
+	ADD R9, R8, R1		//R9 es la posición de PI_2 (Pixel intermedio 2)
 
 
-	//Calculamos primero los valores verticales (0,1), (0,2), (3,1), (3,2)
+	LDRB R10, [R6]		//En R10 leo el valor de P1
+	LDRB R11, [R7]		//En R11 leo el valor de P2
 
-	//Calculamos las pocisiones de (0,1)
-	MOV R3, #4
-	bl _bilinear_interpolation_equation
+	//PI_Y = (y2-y)/(y2-y1)*R10 + (y-y1)/(y2-y1)*R11, para ambos puntos siempre se cumple que:
+	//Para PI_1, y1 = 0, y2 = 12, y = 4, por lo tanto PI_1 = (12-4)/12*P1 + (4-0)/12*P2 = 2/3*P1 + 1/3*P2 = (2*P1 + P2)/3
+	//Para PI_2, y1 = 0, y2 = 12, y = 8, por lo tanto PI_2 = (12-8)/12*P1 + (8-0)/12*P2 = 1/3*P1 + 2/3*P2 = (P1 + 2*P2)/3
 
-	//Calculamos las pocisiones de (0,2)
-	MOV R3, #8
-	bl _bilinear_interpolation_equation
+	//R12 = 3, constante para dividir
+	MOV R12, #3
 
-	//Posicion de esquina (0,0) y (0,3)
-	MOV R0, #3	//Posicion de (0,0)
-	MOV R1, #15 //Posicion de (3,0)
-	bl _get_lateral_values	//Guarda en R5 y R6 los valores de posición en el array temp_pixel, segun R0 y R1
+	// En R6 guardo el valor de PI_1
+	ADD R6, R10, R10
+	ADD R6, R6, R11
+	SDIV R6, R6, R12
+
+	// En R7 guardo el valor de PI_2
+	ADD R7, R10, R11
+	ADD R7, R7, R11
+	SDIV R7, R7, R12
+
+	STRB R6, [R8]           // Guardar el byte en la posición (R8) de la nueva imagen
+	STRB R7, [R9]           // Guardar el byte en la posición (R9) de la nueva imagen
+
+	//Incrementar el contador de X
+	ADD R3, R3, #3
+
+	//Comparo si X (R3) es igual al largo de la imagen nueva
+	CMP R3, R1
+	BLT _vertical_interpolation
+
+	//Incrementar el contador de Y
+	ADD R4, R4, #3
+	ADD R5, R5, #3
+
+	//Comparo si Y (R5) es igual al ancho de la imagen nueva
+	CMP R5, R2
+	BLT _vertical_x_reset
+
+	B _horizontal_setup
 
 
-	//Calculamos las pocisiones de (3,1)
-	MOV R3, #7
-	bl _bilinear_interpolation_equation
+_horizontal_setup:
 
-	//Calculamos las pocisiones de (3,2)
-	MOV R3, #11
-	bl _bilinear_interpolation_equation
+	MOV R4, #0		//R4 es el contador de X, para el primer pixel, el segundo pixel es 1 posicion adelante
 
+_horizontal_y_reset:
+	MOV R3, #0		//R3 es el contador de Y
 
-_bilinear_interpolation_x_values:
-	//Posicion de esquina (0,0) y (3,0)
-	MOV R0, #0	//Posicion de (0,0)
-	MOV R1, #3  //Posicion de (3,0)
+_horizontal_interpolation:
+	//R5, R6, R7, R8, R9, R10, R11, R12 para usar
 
-	MOV R3, #1
+	//En R5 Posicion P1
+	MUL R5, R3, R1		//R5 es la posición en X de la imagen nueva
+	ADD R5, R5, R4		// + X_new
+	ADD R5, R5, R0		//Sumo la dirección de output_buffer, R5 aquí es la dirección del pixel en la nueva imagen
 
-_loop:
-	bl _get_lateral_values	//Guarda en R5 y R6 los valores de posición en el array temp_pixel, segun R0 y R1
+	//En R6 guardo el valor de P1
+	LDRB R6, [R5]		//En R6 leo el valor de P1
+	LDRB R7, [R7, #3]	//En R7 leo el valor de P2
 
-	//Calculamos las pocision inicial (primera ejecución es R3 es 1, pos (1,0))
-	bl _bilinear_interpolation_equation
+	//PI_X = (x2-x)/(x2-x1)*R6 + (x-x1)/(x2-x1)*R7, para ambos puntos siempre se cumple que:
+	//Para PI_1, x1 = 0, x2 = 3, x = 1, por lo tanto PI_1 = (3-1)/3*P1 + (1-0)/3*P2 = 2/3*P1 + 1/3*P2 = (2*P1 + P2)/3
+	//Para PI_2, x1 = 0, x2 = 3, x = 2, por lo tanto PI_2 = (3-2)/3*P1 + (2-0)/3*P2 = 1/3*P1 + 2/3*P2 = (P1 + 2*P2)/3
 
-	//Calculamos las segunda posición (segunda ejecución es R3 es 2, pos (2,0))
+	//R12 = 3, constante para dividir
+	MOV R12, #3
+
+	// En R8 guardo el valor de PI_1
+	ADD R8, R6, R6
+	ADD R8, R8, R7
+	SDIV R8, R8, R12
+
+	// En R9 guardo el valor de PI_2
+	ADD R9, R6, R7
+	ADD R9, R9, R7
+	SDIV R9, R9, R12
+
+	STRB R8, [R5, #1]           // Guardar el byte en la posición (R5+1) de la nueva imagen, PI_1
+	STRB R9, [R5, #2]           // Guardar el byte en la posición (R5+2) de la nueva imagen, PI_2
+
+	//Incrementar el contador de Y
 	ADD R3, R3, #1
-	bl _bilinear_interpolation_equation
 
+	//Comparo si Y (R3) es igual al ancho de la imagen nueva
+	CMP R3, R2
+	BLE _horizontal_interpolation
 
-	CMP R3, #14  // Ultima posición que falta es la 14
-    BEQ _end  
+	//Incrementar el contador de X
+	ADD R4, R4, #3
 
-	//Actualizamos laterales con +4 en R0 y R1
-	ADD R0, R0, #4
-	ADD R1, R1, #4
-	ADD R3, R3, #3	//Incrementamos R3 para la siguiente iteración
+	//Comparo si X (R4) es igual al largo de la imagen nueva -1
+	SUB R11, R1, #1
+	CMP R4, R11
+	BLT _horizontal_y_reset
 
-	B _loop
+	B _save_image
 
+_save_image:
+    // Abrir el archivo de salida (output.img)
+    MOV R7, #5         // Número de syscall para sys_open
+    LDR R0, =output_filename
+    MOV R1, #577       // Flags: O_WRONLY | O_CREAT (escribir solo y crear si no existe)
+    MOV R2, #438       // Permisos: 0666 (lectura y escritura para todos)
+    SWI 0              // Ejecutar syscall
+    MOV R4, R0         // Guardar el descriptor de archivo en R4
 
+    // Escribir los datos en el archivo de salida
+    MOV R7, #4         // Número de syscall para sys_write
+    MOV R0, R4         // Descriptor de archivo (output.img)
+    LDR R1, =output_buffer // Dirección del buffer de salida
 
+	SUB R1, R1, #4		//Restar 4 bytes al buffer para escribir el largo y ancho
+	STRH R2, [R1]		//Guardar el largo
+	STRH R3, [R1, #2]	//Guardar el ancho
+
+    MOV R2, #8388608    // Tamaño de los datos a escribir (8MB en este caso)
+    SWI 0              // Ejecutar syscall
+
+    // Cerrar el archivo de salida
+    MOV R7, #6         // Número de syscall para sys_close
+    MOV R0, R4         // Descriptor de archivo
+    SWI 0              // Ejecutar syscall
 
 _end:
     // Terminar el programa
     MOV R7, #1         // Número de syscall para sys_exit
     MOV R0, #0         // Código de salida
     SWI 0              // Ejecutar syscall
-
-_get_lateral_values:
-	LDRB R5, [R2, R0]      // Cargar el byte en la posición (0,0) de temp_pixel en R5
-	LDRB R6, [R2, R1]      // Cargar el byte en la posición (0,3) de temp_pixel en R6
-
-	MOV PC, LR
-
-_bilinear_interpolation_equation:
-	//PixelX = (x2-x)/(x2-x1)*R5 + (x-x1)/(x2-x1)*R6
-	//PixelY = (y2-y)/(y2-y1)*R5 + (y-y1)/(y2-y1)*R6		//Es la misma para ambos casos, solo cambia la posición de los bytes
-
-	//R7 = (R1-R3)/(R1-R0)*R5 + (R3-R0)/(R1-R0)*R6
-	//Factorizando R7 = [(R1-R3)*R5 + (R3-R0)*R6]/(R1-R0)
-	SUB R10, R1, R3
-	MUL R7, R10, R5
-
-	SUB R10, R3, R0
-	MUL R4, R10, R6				//R4 haciendo de auxiliar
-
-	ADD R7, R7, R4
-
-	SUB R10, R1, R0
-	SDIV R7, R7, R10
-
-	//SDIV R4, R4, R10
-
-
-	STRB R7, [R2, R3]           // Guardar el byte en la posición (0,1) de temp_pixel 
-	DSB            				// Asegurar que la escritura se complete
-
-	MOV PC, LR
-
-
-_reset_temp_pixel:
-	// Resetear todos los bytes de temp_pixel a 0 con str
-	MOV R10, #0
-	STRB R10, [R2]
-	STRB R10, [R2, #4]
-	STRB R10, [R2, #8]
-	STRB R10, [R2, #12]
-
-	MOV PC, LR
-
 

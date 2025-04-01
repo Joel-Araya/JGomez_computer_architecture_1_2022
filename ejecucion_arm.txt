@@ -46,6 +46,26 @@ i r r3 r4
 
 c 359
 
+###- Breakpoint en _next_pixel end
+
+file test
+target remote localhost:1234
+b _reset_x
+b _end
+c
+
+i r r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12
+
+Imagen de 500x500 termina en: 0x0021d440 espacios
+Base + 0x0x0021d440
+
+224370
+
+x/16xb &temp_pixels
+x/100xb &output_buffer
+
+
+i r r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12
 
 ###- Breakpoint en end
 
@@ -53,10 +73,18 @@ file test
 target remote localhost:1234
 b _end
 c
+
+
 x/16xb &temp_pixels
+
 x/100xb &data_buffer
 x/100xb &output_buffer
-i r r3 r4
+i r r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12
+
+step
+i r r3 r4 r8 r9
+x/d &largo
+x/d &ancho
 
 c 359
 
@@ -69,5 +97,5 @@ x/s &data_buffer
 x/s &output_buffer
 x/w &count_buffer
 x/s &temp_word
-i r r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12
+i r r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12
 x/50s &word_buffer
