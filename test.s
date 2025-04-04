@@ -150,14 +150,14 @@ _vertical_interpolation:
 	MOV R12, #3
 
 	// En R6 guardo el valor de PI_1
-	ADD R6, R10, R10
-	ADD R6, R6, R11
-	SDIV R6, R6, R12
+	ADD R6, R10, R10		//2*P1
+	ADD R6, R6, R11			//+ P2
+	SDIV R6, R6, R12		//Divido entre 3
 
 	// En R7 guardo el valor de PI_2
-	ADD R7, R10, R11
-	ADD R7, R7, R11
-	SDIV R7, R7, R12
+	ADD R7, R10, R11		//P1 + P2
+	ADD R7, R7, R11			//+ P2, = P1 + 2*P2
+	SDIV R7, R7, R12		//Divido entre 3
 
 	STRB R6, [R8]           // Guardar el byte en la posición (R8) de la nueva imagen
 	STRB R7, [R9]           // Guardar el byte en la posición (R9) de la nueva imagen
