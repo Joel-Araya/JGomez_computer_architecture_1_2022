@@ -14,21 +14,6 @@ arm-none-eabi-gdb
 
 #(gdb) 
 
-###-Breakpoint en cada parte
-
-file test
-target remote localhost:1234
-b _read_char
-b _check_word
-b _compare_words
-b _next_word
-b _add_count
-b _save_word
-b _copy_word
-b _save_data
-b _end
-b _complete_temp_word
-b _complete_temp_word_loop
 
 
 ###- Breakpoint en bilinear eq y end
@@ -44,7 +29,6 @@ x/100xb &data_buffer
 x/100xb &output_buffer
 i r r3 r4
 
-c 359
 
 ###- Breakpoint en _next_pixel end
 

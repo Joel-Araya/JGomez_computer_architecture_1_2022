@@ -237,6 +237,11 @@ _horizontal_interpolation:
 	B _save_image
 
 _save_image:
+    // Guardar el nuevo largo y ancho en el buffer de salida
+    LDR R0, =output_buffer  // Dirección del buffer de salida
+    STRH R1, [R0]           // Guardar el nuevo largo (R1) en los primeros 2 bytes
+    STRH R2, [R0, #2]       // Guardar el nuevo ancho (R2) en los siguientes 2 bytes
+
     // Abrir el archivo de salida (output.img)
     MOV R7, #5         // Número de syscall para sys_open
     LDR R0, =output_filename
@@ -249,12 +254,8 @@ _save_image:
     MOV R7, #4         // Número de syscall para sys_write
     MOV R0, R4         // Descriptor de archivo (output.img)
     LDR R1, =output_buffer // Dirección del buffer de salida
-
-	SUB R1, R1, #4		//Restar 4 bytes al buffer para escribir el largo y ancho
-	STRH R2, [R1]		//Guardar el largo
-	STRH R3, [R1, #2]	//Guardar el ancho
-
-    MOV R2, #8388608    // Tamaño de los datos a escribir (8MB en este caso)
+    ADD R2, R1, #4     // Ajustar la cantidad de datos a escribir (incluyendo los 4 bytes de largo y ancho)
+    MOV R2, #8388608    // Tamaño de los datos a escribir (8MB + 4 bytes)
     SWI 0              // Ejecutar syscall
 
     // Cerrar el archivo de salida
