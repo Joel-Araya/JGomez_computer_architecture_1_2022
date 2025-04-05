@@ -3,3 +3,7 @@ imagen_reconstruida.jpg
 input.img
 input_gray.jpg
 output.img
+test.s
+test.o
+*.s
+*.o

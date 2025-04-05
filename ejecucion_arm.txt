@@ -59,6 +59,46 @@ b _end
 c
 
 
+###- Breakpoint en _reset_x
+
+file test
+target remote localhost:1234
+b _reset_x
+c
+x/169xb &output_buffer
+
+
+###- Breakpoint en la interpolación
+
+file test
+target remote localhost:1234
+b _vertical_x_reset
+b _vertical_interpolation
+b _horizontal_y_reset
+b _horizontal_interpolation
+b _end
+c
+x/169xb &output_buffer
+i r r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12
+
+
+
+###- Breakpoint en la interpolación horizontal
+
+file test
+target remote localhost:1234
+b _horizontal_y_reset
+b _horizontal_interpolation
+b _end
+c
+x/169xb &output_buffer
+i r r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12
+
+
+
+
+
+
 x/16xb &temp_pixels
 
 x/100xb &data_buffer

@@ -194,10 +194,11 @@ _horizontal_interpolation:
 	MUL R5, R3, R1		//R5 es la posición en X de la imagen nueva
 	ADD R5, R5, R4		// + X_new
 	ADD R5, R5, R0		//Sumo la dirección de output_buffer, R5 aquí es la dirección del pixel en la nueva imagen
+	ADD R11, R5, #3		//En R11 guardo la posición de P2 (Pos_P1+3)
 
 	//En R6 guardo el valor de P1
 	LDRB R6, [R5]		//En R6 leo el valor de P1
-	LDRB R7, [R7, #3]	//En R7 leo el valor de P2
+	LDRB R7, [R11]		//En R7 leo el valor de P2
 
 	//PI_X = (x2-x)/(x2-x1)*R6 + (x-x1)/(x2-x1)*R7, para ambos puntos siempre se cumple que:
 	//Para PI_1, x1 = 0, x2 = 3, x = 1, por lo tanto PI_1 = (3-1)/3*P1 + (1-0)/3*P2 = 2/3*P1 + 1/3*P2 = (2*P1 + P2)/3

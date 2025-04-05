@@ -6,7 +6,7 @@ import struct
 
 # Parámetros configurables
 GRID_SIZE = 4  
-SIDE_LENGTH = 390  
+SIDE_LENGTH = 392 
 TARGET_SIZE = (SIDE_LENGTH, SIDE_LENGTH)  
 
 # Cargar imagen y redimensionarla
